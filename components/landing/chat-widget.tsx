@@ -28,21 +28,35 @@ export function ChatWidget() {
   const [loading, setLoading] = React.useState(false);
   const endRef = React.useRef<HTMLDivElement>(null);
 
+  // Conversation history lives in the database; load it when the page opens.
+  React.useEffect(() => {
+    let cancelled = false;
+    fetch("/api/chat")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled || !Array.isArray(data?.messages) || !data.messages.length) return;
+        setMessages([...initialMessages, ...data.messages]);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   React.useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
   async function sendMessage(text: string) {
     if (!text.trim() || loading) return;
-    const next: Message[] = [...messages, { from: "user", text }];
-    setMessages(next);
+    setMessages((prev) => [...prev, { from: "user", text }]);
     setInput("");
     setLoading(true);
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: next }),
+        body: JSON.stringify({ text }),
       });
       const data = await res.json();
       if (!res.ok || !data.reply) throw new Error(data.error);
