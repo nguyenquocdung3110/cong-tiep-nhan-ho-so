@@ -211,34 +211,3 @@ export const studentProfiles: StudentProfile[] = [
     totalSchools: 5,
   },
 ];
-
-// Hồ sơ của học viên đang đăng nhập demo tại /portal
-export const currentStudent = {
-  name: "Nguyễn Minh Anh",
-  email: "minhanh.nguyen@example.com",
-  documents: {
-    transcript: {
-      status: "hop_le" as DocStatus,
-      fileName: "bang-diem-minh-anh.pdf",
-    },
-    ielts: {
-      status: "dang_xu_ly" as DocStatus,
-      fileName: "ielts-certificate.jpg",
-    },
-    identity: {
-      status: "can_nop_lai" as DocStatus,
-      fileName: "cccd-mat-truoc.jpg",
-      reason: "Ảnh mờ, không đọc rõ thông tin",
-    },
-  },
-  extracted: {
-    fullName: "Nguyễn Minh Anh",
-    dateOfBirth: "12/05/2005",
-    gpa: 8.2,
-    ielts: 6.5,
-  },
-  matches: [
-    { school: schools[0], passed: true },
-    { school: schools[4], passed: false },
-  ],
-};

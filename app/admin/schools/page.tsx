@@ -10,9 +10,27 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { schools } from "@/lib/mock-data";
+import { listSchools } from "@/lib/schools";
 
-export default function AdminSchoolsPage() {
+// Live data from Supabase: never prerender or cache this page.
+export const dynamic = "force-dynamic";
+
+export default async function AdminSchoolsPage() {
+  let schools;
+  try {
+    schools = await listSchools();
+  } catch (err) {
+    console.error("Load schools failed", err);
+    return (
+      <>
+        <AdminPageHeader title="Trường tham chiếu" />
+        <p className="text-sm text-destructive">
+          Không tải được danh sách trường. Kiểm tra SUPABASE_URL và SUPABASE_PUBLISHABLE_KEY trong .env.
+        </p>
+      </>
+    );
+  }
+
   return (
     <>
       <AdminPageHeader
@@ -38,6 +56,13 @@ export default function AdminSchoolsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
+            {schools.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
+                  Chưa có trường nào.
+                </TableCell>
+              </TableRow>
+            )}
             {schools.map((school) => (
               <TableRow key={school.id}>
                 <TableCell className="font-medium">{school.name}</TableCell>
