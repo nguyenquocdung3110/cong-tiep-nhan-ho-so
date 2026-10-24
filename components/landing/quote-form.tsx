@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Check, Mail } from "lucide-react";
+import { Check, Loader2, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,13 +15,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { countries, servicePackages, type ServicePackage } from "@/lib/mock-data";
-
-const degreeLevels = [
-  { value: "thpt", label: "THPT" },
-  { value: "dai_hoc", label: "Đại học" },
-  { value: "thac_si", label: "Thạc sĩ" },
-];
+import { servicePackages } from "@/lib/mock-data";
+import {
+  COUNTRIES,
+  DEGREE_LEVELS,
+  formatVnd,
+  isValidEmail,
+  isValidPhone,
+  type ServicePackage,
+} from "@/lib/quote";
 
 const srOnlyStyle: React.CSSProperties = {
   position: "absolute",
@@ -35,23 +37,78 @@ const srOnlyStyle: React.CSSProperties = {
   border: 0,
 };
 
-function formatVnd(value: number) {
-  return value.toLocaleString("vi-VN") + "₫";
-}
-
 export function QuoteForm() {
   const [country, setCountry] = React.useState<string>("");
   const [degreeLevel, setDegreeLevel] = React.useState<string>("dai_hoc");
   const [selectedPackage, setSelectedPackage] = React.useState<ServicePackage>("co_ban");
+  const [name, setName] = React.useState("");
   const [email, setEmail] = React.useState("");
   const [phone, setPhone] = React.useState("");
-  const [submitted, setSubmitted] = React.useState(false);
+  const [emailError, setEmailError] = React.useState("");
+  const emailRef = React.useRef<HTMLInputElement>(null);
+  const [website, setWebsite] = React.useState(""); // honeypot, hidden from real visitors
+  const [submitting, setSubmitting] = React.useState(false);
+  const [error, setError] = React.useState("");
+  // The price shown to the customer is the one the server calculated and saved.
+  const [result, setResult] = React.useState<{ price: number; packageName: string } | null>(null);
 
-  const chosenPackage = servicePackages.find((p) => p.id === selectedPackage)!;
+  function emailProblem(value: string): string {
+    const v = value.trim();
+    if (!v) return "Vui lòng nhập email.";
+    if (!isValidEmail(v)) {
+      return "Email không đúng định dạng. Vui lòng nhập lại, ví dụ: ban@email.com";
+    }
+    return "";
+  }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setSubmitted(true);
+    setError("");
+    setResult(null);
+    const problem = emailProblem(email);
+    setEmailError(problem);
+    if (problem) {
+      emailRef.current?.focus();
+      return; // invalid email: the form is not sent
+    }
+    if (!name.trim()) {
+      setError("Vui lòng nhập họ tên.");
+      return;
+    }
+    if (!isValidPhone(phone.trim())) {
+      setError("Số điện thoại không hợp lệ.");
+      return;
+    }
+    if (!country) {
+      setError("Vui lòng chọn quốc gia muốn du học.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/quote-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          email,
+          phone,
+          country,
+          degreeLevel,
+          servicePackage: selectedPackage,
+          website,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || typeof data.price !== "number") {
+        setError(data.error ?? "Chưa gửi được yêu cầu, vui lòng thử lại.");
+        return;
+      }
+      setResult({ price: data.price, packageName: data.packageName });
+    } catch {
+      setError("Chưa gửi được yêu cầu, vui lòng thử lại.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -67,7 +124,7 @@ export function QuoteForm() {
         </div>
 
         <Card className="mt-10 p-6 md:p-8">
-          <form onSubmit={handleSubmit} className="space-y-8">
+          <form onSubmit={handleSubmit} noValidate className="space-y-8">
             <div className="grid gap-6 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="country">Quốc gia muốn du học</Label>
@@ -76,7 +133,7 @@ export function QuoteForm() {
                     <SelectValue placeholder="Chọn quốc gia" />
                   </SelectTrigger>
                   <SelectContent>
-                    {countries.map((c) => (
+                    {COUNTRIES.map((c) => (
                       <SelectItem key={c} value={c}>
                         {c}
                       </SelectItem>
@@ -92,7 +149,7 @@ export function QuoteForm() {
                   onValueChange={setDegreeLevel}
                   className="grid grid-cols-3 gap-2 pt-1"
                 >
-                  {degreeLevels.map((level) => (
+                  {DEGREE_LEVELS.map((level) => (
                     <label
                       key={level.value}
                       className={cn(
@@ -151,17 +208,43 @@ export function QuoteForm() {
               </div>
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="name">Họ và tên</Label>
+              <Input
+                id="name"
+                required
+                maxLength={200}
+                autoComplete="name"
+                placeholder="Nguyễn Văn A"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </div>
+
             <div className="grid gap-6 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="email">Email liên hệ</Label>
                 <Input
                   id="email"
+                  ref={emailRef}
                   type="email"
-                  required
+                  autoComplete="email"
                   placeholder="ban@email.com"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  aria-invalid={emailError ? true : undefined}
+                  aria-describedby={emailError ? "email-error" : undefined}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    // once an error is showing, re-check while typing so it clears as soon as it is fixed
+                    if (emailError) setEmailError(emailProblem(e.target.value));
+                  }}
+                  onBlur={() => email && setEmailError(emailProblem(email))}
                 />
+                {emailError && (
+                  <p id="email-error" role="alert" className="text-sm text-red-600">
+                    {emailError}
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="phone">Số điện thoại</Label>
@@ -176,20 +259,38 @@ export function QuoteForm() {
               </div>
             </div>
 
-            <Button type="submit" size="lg" className="w-full sm:w-auto">
-              Nhận báo giá
+            {/* Honeypot: off-screen and skipped by keyboard/screen readers; only bots fill it. */}
+            <div aria-hidden="true" style={{ position: "absolute", left: -9999 }}>
+              <label htmlFor="website">Website</label>
+              <input
+                id="website"
+                name="website"
+                tabIndex={-1}
+                autoComplete="off"
+                value={website}
+                onChange={(e) => setWebsite(e.target.value)}
+              />
+            </div>
+
+            <Button type="submit" size="lg" className="w-full sm:w-auto" disabled={submitting}>
+              {submitting && <Loader2 className="animate-spin" />}
+              {submitting ? "Đang gửi..." : "Nhận báo giá"}
             </Button>
 
-            {submitted && (
+            {error && <p className="text-sm text-red-600">{error}</p>}
+
+            {result && (
               <div className="space-y-3 rounded-xl border border-primary/20 bg-accent p-5">
-                <p className="text-sm text-muted-foreground">Mức giá dự kiến cho bạn</p>
+                <p className="text-sm text-muted-foreground">
+                  Mức giá dự kiến cho gói {result.packageName}
+                </p>
                 <p className="text-3xl font-semibold tracking-tight text-accent-foreground">
-                  {formatVnd(chosenPackage.price)}
+                  {formatVnd(result.price)}
                 </p>
                 <div className="flex items-start gap-2 text-sm text-accent-foreground">
                   <Mail className="mt-0.5 size-4 shrink-0" />
                   <span>
-                    Báo giá đã được gửi qua email, đội ngũ sẽ liên hệ trong 24h.
+                    Yêu cầu của bạn đã được ghi nhận. Đội ngũ tư vấn sẽ xem xét và liên hệ với bạn qua email.
                   </span>
                 </div>
               </div>

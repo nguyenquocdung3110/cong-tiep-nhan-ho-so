@@ -1,3 +1,5 @@
+import { PACKAGE_PRICES } from "@/lib/quote";
+
 // Toàn bộ dữ liệu trong file này là dữ liệu giả (mock), viết cứng để dựng UI.
 // Học viên sẽ thay thế bằng dữ liệu thật từ Supabase ở các tuần sau.
 
@@ -14,15 +16,6 @@ export interface School {
   minGpa: number;
   minIelts: number;
 }
-
-export const countries = [
-  "Mỹ",
-  "Anh",
-  "Úc",
-  "Canada",
-  "Hàn Quốc",
-  "Nhật Bản",
-] as const;
 
 export const schools: School[] = [
   {
@@ -74,7 +67,7 @@ export const servicePackages: ServiceOption[] = [
   {
     id: "co_ban",
     name: "Cơ bản",
-    price: 18_000_000,
+    price: PACKAGE_PRICES.co_ban,
     description: "Phù hợp nếu hồ sơ của bạn đơn giản và đã chuẩn bị sẵn phần lớn giấy tờ.",
     benefits: [
       "Đối chiếu điểm chuẩn tự động",
@@ -86,7 +79,7 @@ export const servicePackages: ServiceOption[] = [
   {
     id: "toan_dien",
     name: "Toàn diện",
-    price: 45_000_000,
+    price: PACKAGE_PRICES.toan_dien,
     description: "Đồng hành trọn gói từ tư vấn trường đến nộp hồ sơ.",
     benefits: [
       "Toàn bộ quyền lợi gói Cơ bản",
