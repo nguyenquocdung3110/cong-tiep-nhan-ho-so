@@ -42,7 +42,7 @@ export function SiteFooter() {
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-muted-foreground duration-150 hover:text-primary">
+                <Link href="/schools" className="text-muted-foreground duration-150 hover:text-primary">
                   Điểm chuẩn các trường
                 </Link>
               </li>
@@ -55,10 +55,16 @@ export function SiteFooter() {
           </div>
         </div>
 
-        <div className="border-t pt-6">
+        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-t pt-6">
           <p className="text-sm text-muted-foreground">
             &copy; 2026 DuHoc24. Website mẫu dùng cho mục đích đào tạo.
           </p>
+          <Link
+            href="/privacy"
+            className="text-sm text-muted-foreground duration-150 hover:text-primary"
+          >
+            Chính sách quyền riêng tư
+          </Link>
         </div>
       </div>
     </footer>
