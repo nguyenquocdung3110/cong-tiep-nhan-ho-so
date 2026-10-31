@@ -1,25 +1,27 @@
-import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { DocumentFeatures } from "@/components/portal/document-features";
 import { ExtractedInfo } from "@/components/portal/extracted-info";
 import { SchoolMatch } from "@/components/portal/school-match";
+import { NoAccess } from "@/components/portal/no-access";
 import { ScholarshipSuggestions } from "@/components/portal/scholarship-suggestions";
 import { basisKey } from "@/lib/scholarship-advisor";
 import { buildAdvisorInput } from "@/lib/scholarship-input";
 import { gpaOnTenScale, matchSchools, SCHOOL_GPA_SCALE } from "@/lib/school-match";
 import { listSchools, type School } from "@/lib/schools";
-import { getProfile, isValidProfileId, type StudentProfile } from "@/lib/student-store";
+import { getPortalAccess } from "@/lib/access";
+import { getProfileByUser, type StudentProfile } from "@/lib/student-store";
 
-// Personal, per-visitor data read from Supabase: never prerender or cache.
+// Personal data of the logged-in user, read from Supabase: never prerender or cache.
 export const dynamic = "force-dynamic";
 
-async function loadProfile(): Promise<{ profile: StudentProfile | null; failed: boolean }> {
-  const id = (await cookies()).get("student_profile")?.value;
-  if (!isValidProfileId(id)) return { profile: null, failed: false };
+async function loadProfile(
+  userId: string,
+): Promise<{ profile: StudentProfile | null; failed: boolean }> {
   try {
-    return { profile: await getProfile(id), failed: false };
+    return { profile: await getProfileByUser(userId), failed: false };
   } catch (err) {
     console.error("Load student profile failed", (err as Error).message);
     return { profile: null, failed: true };
@@ -36,7 +38,25 @@ async function loadSchools(): Promise<School[] | null> {
 }
 
 export default async function PortalPage() {
-  const [{ profile, failed }, schools] = await Promise.all([loadProfile(), loadSchools()]);
+  // Not logged in -> login page. Logged in but not approved -> "no access" message.
+  const access = await getPortalAccess();
+  if (access.state === "anonymous") redirect("/login?next=/portal");
+  if (access.state === "no_access") {
+    return (
+      <>
+        <SiteHeader />
+        <main className="mx-auto max-w-5xl px-6 pb-24 pt-32">
+          <NoAccess email={access.user.email} />
+        </main>
+      </>
+    );
+  }
+  const user = access.user;
+
+  const [{ profile, failed }, schools] = await Promise.all([
+    loadProfile(user.id),
+    loadSchools(),
+  ]);
 
   // Compare only once all 3 documents are submitted and valid.
   const notReady = [
@@ -60,9 +80,11 @@ export default async function PortalPage() {
   const stale = !!saved && !!advisor?.input && saved.basis !== basisKey(advisor.input);
 
   const displayName =
+    user.name ??
     profile?.identity.data.fullName ??
     profile?.transcript.data.fullName ??
     profile?.ielts.data.fullName ??
+    user.email ??
     "bạn";
 
   return (
@@ -74,10 +96,12 @@ export default async function PortalPage() {
             <p className="text-sm text-muted-foreground">Xin chào,</p>
             <h1 className="text-2xl font-medium tracking-tight">{displayName}</h1>
           </div>
-          <Button variant="outline">
-            <LogOut className="size-4" />
-            Đăng xuất
-          </Button>
+          <form action="/auth/signout" method="post">
+            <Button type="submit" variant="outline">
+              <LogOut className="size-4" />
+              Đăng xuất
+            </Button>
+          </form>
         </div>
 
         {failed && (

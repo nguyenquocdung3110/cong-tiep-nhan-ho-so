@@ -1,14 +1,7 @@
-import { cookies } from "next/headers";
+import { getPortalAccess } from "@/lib/access";
 import { extractDocument } from "@/lib/document-extractor";
-import {
-  createProfile,
-  isValidProfileId,
-  profileExists,
-  saveDocument,
-  type DocType,
-} from "@/lib/student-store";
+import { getOrCreateProfileId, saveDocument, type DocType } from "@/lib/student-store";
 
-const COOKIE_NAME = "student_profile";
 const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4 MB (also fits common serverless body limits)
 
 type Mime = "application/pdf" | "image/jpeg" | "image/png";
@@ -49,6 +42,16 @@ function safeFileName(name: string) {
 }
 
 export async function POST(request: Request) {
+  // Only a logged-in user can upload; the file always goes to that user's own profile.
+  const access = await getPortalAccess();
+  if (access.state === "anonymous") {
+    return errorResponse("Bạn cần đăng nhập để nộp giấy tờ.", 401);
+  }
+  if (access.state === "no_access") {
+    return errorResponse("Tài khoản này chưa có quyền truy cập cổng hồ sơ.", 403);
+  }
+  const user = access.user;
+
   let form: FormData;
   try {
     form = await request.formData();
@@ -73,18 +76,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const jar = await cookies();
-    let profileId = jar.get(COOKIE_NAME)?.value;
-    if (!isValidProfileId(profileId) || !(await profileExists(profileId))) {
-      profileId = await createProfile();
-      jar.set(COOKIE_NAME, profileId, {
-        httpOnly: true,
-        sameSite: "lax",
-        secure: process.env.NODE_ENV === "production",
-        path: "/",
-        maxAge: 60 * 60 * 24 * 365,
-      });
-    }
+    const profileId = await getOrCreateProfileId(user.id, user.email);
 
     let result;
     try {

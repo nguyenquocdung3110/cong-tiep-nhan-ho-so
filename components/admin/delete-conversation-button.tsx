@@ -3,7 +3,7 @@
 import React from "react";
 import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { deleteConversationAction } from "@/app/admin/conversations/actions";
+import { deleteConversationAction } from "@/app/admin/(dashboard)/conversations/actions";
 
 // Two-step inline confirmation (no window.confirm) so a stray click can't delete.
 export function DeleteConversationButton({

@@ -1,3 +1,4 @@
+import { canEdit, requireAdmin } from "@/lib/admin-auth";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { AdminPageHeader } from "@/components/admin/page-header";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,8 @@ import { listSchools } from "@/lib/schools";
 export const dynamic = "force-dynamic";
 
 export default async function AdminSchoolsPage() {
+  const admin = await requireAdmin("/admin/schools");
+  const editable = canEdit(admin); // staff (nhan_vien) can only view
   let schools;
   try {
     schools = await listSchools();
@@ -37,10 +40,12 @@ export default async function AdminSchoolsPage() {
         title="Trường tham chiếu"
         description="Điểm chuẩn dùng để đối chiếu hồ sơ học viên."
         action={
-          <Button>
-            <Plus className="size-4" />
-            Thêm trường mới
-          </Button>
+          editable ? (
+            <Button>
+              <Plus className="size-4" />
+              Thêm trường mới
+            </Button>
+          ) : undefined
         }
       />
 
@@ -70,14 +75,16 @@ export default async function AdminSchoolsPage() {
                 <TableCell>{school.minGpa.toFixed(1)}</TableCell>
                 <TableCell>{school.minIelts.toFixed(1)}</TableCell>
                 <TableCell>
-                  <div className="flex justify-end gap-2">
-                    <Button size="icon-sm" variant="outline" aria-label="Sửa">
-                      <Pencil className="size-3.5" />
-                    </Button>
-                    <Button size="icon-sm" variant="outline" aria-label="Xoá">
-                      <Trash2 className="size-3.5" />
-                    </Button>
-                  </div>
+                  {editable && (
+                    <div className="flex justify-end gap-2">
+                      <Button size="icon-sm" variant="outline" aria-label="Sửa">
+                        <Pencil className="size-3.5" />
+                      </Button>
+                      <Button size="icon-sm" variant="outline" aria-label="Xoá">
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    </div>
+                  )}
                 </TableCell>
               </TableRow>
             ))}

@@ -1,3 +1,4 @@
+import { canEdit, requireAdmin } from "@/lib/admin-auth";
 import Link from "next/link";
 import { AdminPageHeader } from "@/components/admin/page-header";
 import { LeadQualityBadge } from "@/components/admin/lead-quality-badge";
@@ -11,13 +12,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { listConversations } from "@/lib/chat-store";
+import { listConversations } from "@/lib/admin-data";
 import { formatDateTime } from "@/lib/format";
 
 // Live data from Supabase: never prerender or cache this page.
 export const dynamic = "force-dynamic";
 
 export default async function AdminConversationsPage() {
+  const admin = await requireAdmin("/admin/conversations");
+  const editable = canEdit(admin); // staff (nhan_vien) can only view
   let conversations;
   try {
     conversations = await listConversations();
@@ -87,7 +90,7 @@ export default async function AdminConversationsPage() {
                     >
                       Xem
                     </Link>
-                    <DeleteConversationButton id={conv.id} />
+                    {editable && <DeleteConversationButton id={conv.id} />}
                   </span>
                 </TableCell>
               </TableRow>

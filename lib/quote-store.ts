@@ -133,3 +133,25 @@ export async function getUnnotifiedApproved(
   if (error) throw error;
   return data ? { customerName: data.customer_name, email: data.email } : null;
 }
+
+/**
+ * Is this email the email of an approved quote request? Used for the friendly "no access"
+ * page and as a gate on the write APIs. Reads of the profile are additionally protected in
+ * the database itself (RLS policy on student_profiles using private.is_approved_customer(),
+ * which applies the same rule).
+ */
+export async function isApprovedCustomerEmail(email: string): Promise<boolean> {
+  const clean = email.trim();
+  if (!clean) return false;
+  // ILIKE without wildcards = case-insensitive equality; "%", "_" and "\" are valid
+  // in email addresses, so escape them to keep them literal.
+  const literal = clean.replace(/[\\%_]/g, (c) => `\\${c}`);
+  const { data, error } = await createAdminClient()
+    .from("quote_requests")
+    .select("id")
+    .eq("status", "da_duyet")
+    .ilike("email", literal)
+    .limit(1);
+  if (error) throw error;
+  return (data?.length ?? 0) > 0;
+}

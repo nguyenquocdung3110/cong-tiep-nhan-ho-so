@@ -2,9 +2,11 @@
 //
 // Env (server only):
 //   MAKE_APPROVAL_WEBHOOK_URL  webhook URL (contains a secret token: never commit it)
-//   STUDENT_LOGIN_URL          the login link sent to the customer. For now a sample link
-//                              (this site's /login); when the real login page exists, only
-//                              this value changes, the payload and the Make scenario stay as is.
+//   STUDENT_LOGIN_URL          the login link sent to the customer: the address of this
+//                              site's /login page (Sign in with Google). Locally it is
+//                              http://localhost:3000/login; in production set it to the real
+//                              domain, e.g. https://your-domain/login. The payload and the
+//                              Make scenario do not change.
 
 const TIMEOUT_MS = 8000;
 

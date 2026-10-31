@@ -1,4 +1,5 @@
 import { createAdminClient } from "@supabase/server/core";
+import { createAuthClient } from "@/lib/auth";
 import type { ScholarshipSuggestions } from "@/lib/scholarship-advisor";
 
 // Server-only. student_profiles holds private personal data (dates of birth, ID
@@ -50,43 +51,36 @@ export type StudentProfile = {
   } | null;
 };
 
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/**
+ * The profile of a logged-in user, created on first use. One profile per account
+ * (user_id is unique); a concurrent first request is handled by re-reading on conflict.
+ */
+export async function getOrCreateProfileId(userId: string, email?: string | null): Promise<string> {
+  const db = createAdminClient();
+  const find = () =>
+    db.from("student_profiles").select("id").eq("user_id", userId).maybeSingle();
 
-export function isValidProfileId(id: string | undefined): id is string {
-  return !!id && UUID_RE.test(id);
-}
+  const existing = await find();
+  if (existing.error) throw existing.error;
+  if (existing.data) return existing.data.id as string;
 
-export async function createProfile(): Promise<string> {
-  const { data, error } = await createAdminClient()
+  const inserted = await db
     .from("student_profiles")
-    .insert({})
+    .insert({ user_id: userId, email: email ?? null })
     .select("id")
     .single();
-  if (error) throw error;
-  return data.id as string;
-}
+  if (!inserted.error) return inserted.data.id as string;
 
-export async function profileExists(id: string): Promise<boolean> {
-  const { data, error } = await createAdminClient()
-    .from("student_profiles")
-    .select("id")
-    .eq("id", id)
-    .maybeSingle();
-  if (error) throw error;
-  return !!data;
+  const again = await find(); // another request created it first
+  if (again.data) return again.data.id as string;
+  throw inserted.error;
 }
 
 const num = (v: unknown) => (v === null || v === undefined ? null : Number(v));
 
-export async function getProfile(id: string): Promise<StudentProfile | null> {
-  const { data: r, error } = await createAdminClient()
-    .from("student_profiles")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle();
-  if (error) throw error;
-  if (!r) return null;
+/** Maps a student_profiles row to the app's StudentProfile shape. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function profileFromRow(r: any): StudentProfile {
   return {
     id: r.id,
     transcript: {
@@ -132,6 +126,24 @@ export async function getProfile(id: string): Promise<StudentProfile | null> {
       },
     },
   };
+}
+
+
+/**
+ * The profile belonging to this logged-in user, or null if there is none (or the user is
+ * not approved). Read with the USER'S OWN session, not the secret key, so the database's RLS
+ * policy is what enforces "only your own profile": even a bug here could not return
+ * somebody else's row.
+ */
+export async function getProfileByUser(userId: string): Promise<StudentProfile | null> {
+  const { data: r, error } = await (await createAuthClient())
+    .from("student_profiles")
+    .select("*")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!r) return null;
+  return profileFromRow(r);
 }
 
 type Columns = Record<string, string | number | null>;

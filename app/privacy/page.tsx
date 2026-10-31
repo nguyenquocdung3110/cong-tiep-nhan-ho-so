@@ -54,8 +54,8 @@ export default function PrivacyPage() {
             <h2 className="text-lg font-medium">3. Lưu ở đâu và ai xử lý</h2>
             <p className="mt-3 text-muted-foreground">
               Dữ liệu của bạn được lưu trên Supabase (máy chủ đặt tại vùng Mumbai, Ấn Độ). Chỉ hệ
-              thống của chúng tôi truy cập được; trình duyệt của người dùng không truy cập trực tiếp
-              vào cơ sở dữ liệu.
+              thống của chúng tôi truy cập được dữ liệu; mỗi người dùng chỉ xem được hồ sơ gắn với
+              tài khoản Google của chính mình và không xem được hồ sơ của người khác.
             </p>
             <p className="mt-3 text-muted-foreground">Để vận hành, một số dữ liệu được xử lý bởi:</p>
             <ul className="mt-2 list-disc space-y-2 pl-5 text-muted-foreground">

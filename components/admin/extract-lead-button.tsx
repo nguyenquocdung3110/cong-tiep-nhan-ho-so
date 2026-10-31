@@ -3,7 +3,7 @@
 import React from "react";
 import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { extractLeadAction } from "@/app/admin/conversations/actions";
+import { extractLeadAction } from "@/app/admin/(dashboard)/conversations/actions";
 
 export function ExtractLeadButton({
   conversationId,

@@ -1,26 +1,24 @@
-import { cookies } from "next/headers";
+import { getPortalAccess } from "@/lib/access";
 import { basisKey, suggestScholarships } from "@/lib/scholarship-advisor";
 import { buildAdvisorInput } from "@/lib/scholarship-input";
 import { listSchools } from "@/lib/schools";
-import {
-  getProfile,
-  isValidProfileId,
-  saveScholarshipSuggestions,
-} from "@/lib/student-store";
+import { getProfileByUser, saveScholarshipSuggestions } from "@/lib/student-store";
 
 function errorResponse(message: string, status: number) {
   return Response.json({ error: message }, { status });
 }
 
 export async function POST() {
-  const id = (await cookies()).get("student_profile")?.value;
-  if (!isValidProfileId(id)) {
-    return errorResponse("Bạn chưa có hồ sơ. Hãy nộp giấy tờ trước.", 400);
+  const access = await getPortalAccess();
+  if (access.state === "anonymous") return errorResponse("Bạn cần đăng nhập.", 401);
+  if (access.state === "no_access") {
+    return errorResponse("Tài khoản này chưa có quyền truy cập cổng hồ sơ.", 403);
   }
+  const user = access.user;
 
   try {
-    const profile = await getProfile(id);
-    if (!profile) return errorResponse("Không tìm thấy hồ sơ.", 404);
+    const profile = await getProfileByUser(user.id);
+    if (!profile) return errorResponse("Bạn chưa có hồ sơ. Hãy nộp giấy tờ trước.", 400);
 
     const { input, reason } = buildAdvisorInput(profile, await listSchools());
     if (!input) {
@@ -40,7 +38,7 @@ export async function POST() {
       return errorResponse("Chưa gợi ý được học bổng lúc này, vui lòng thử lại sau.", 502);
     }
 
-    await saveScholarshipSuggestions(id, suggestions, basisKey(input));
+    await saveScholarshipSuggestions(profile.id, suggestions, basisKey(input));
     return Response.json({ ok: true });
   } catch (err) {
     console.error("Scholarship endpoint failed", (err as Error).message);

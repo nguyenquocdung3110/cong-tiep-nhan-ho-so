@@ -1,3 +1,4 @@
+import { canEdit, requireAdmin } from "@/lib/admin-auth";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
@@ -5,7 +6,8 @@ import { AdminPageHeader } from "@/components/admin/page-header";
 import { LeadPanel } from "@/components/admin/lead-panel";
 import { DeleteConversationButton } from "@/components/admin/delete-conversation-button";
 import { Card } from "@/components/ui/card";
-import { getConversation, getLead, isValidConversationId } from "@/lib/chat-store";
+import { getConversation, getLead } from "@/lib/admin-data";
+import { isValidConversationId } from "@/lib/chat-store";
 import { formatDateTime, formatTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +19,8 @@ export default async function AdminConversationDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const admin = await requireAdmin(`/admin/conversations/${encodeURIComponent(id)}`);
+  const editable = canEdit(admin); // staff (nhan_vien) can only view
   if (!isValidConversationId(id)) notFound();
 
   const conversation = await getConversation(id);
@@ -36,7 +40,7 @@ export default async function AdminConversationDetailPage({
       <AdminPageHeader
         title="Chi tiết hội thoại"
         description={`Bắt đầu ${formatDateTime(conversation.createdAt)} · ${conversation.messages.length} tin nhắn · mã ${conversation.id.slice(0, 8)}`}
-        action={<DeleteConversationButton id={conversation.id} redirectToList />}
+        action={editable ? <DeleteConversationButton id={conversation.id} redirectToList /> : undefined}
       />
 
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,42rem)_22rem]">
@@ -70,6 +74,7 @@ export default async function AdminConversationDetailPage({
           conversationId={conversation.id}
           lead={lead}
           messageCount={conversation.messages.length}
+        canEdit={editable}
         />
       </div>
     </>

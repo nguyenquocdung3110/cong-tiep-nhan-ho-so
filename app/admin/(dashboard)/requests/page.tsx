@@ -1,3 +1,4 @@
+import { requireAdmin } from "@/lib/admin-auth";
 import { AdminPageHeader } from "@/components/admin/page-header";
 import { RequestActions } from "@/components/admin/request-actions";
 import { Card } from "@/components/ui/card";
@@ -21,6 +22,7 @@ const degreeLabel = (v: string) => DEGREE_LEVELS.find((d) => d.value === v)?.lab
 const packageLabel = (v: string) => PACKAGE_NAMES[v as ServicePackage] ?? v;
 
 export default async function AdminRequestsPage() {
+  await requireAdmin("/admin/requests");
   let requests;
   try {
     requests = await listQuoteRequests();

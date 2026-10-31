@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { getAdminUser } from "@/lib/admin-auth";
 import { sendApprovalWebhook } from "@/lib/approval-webhook";
 import {
   approveQuoteRequest,
@@ -15,10 +16,15 @@ export type ActionResult = {
   message: string;
 };
 
+const NOT_ADMIN: ActionResult = {
+  tone: "error",
+  message: "Phiên đăng nhập quản trị đã hết hạn. Vui lòng đăng nhập lại.",
+};
 const INVALID: ActionResult = { tone: "error", message: "Mã yêu cầu không hợp lệ." };
 const FAILED: ActionResult = { tone: "error", message: "Không xử lý được yêu cầu. Thử lại sau." };
 
 export async function approveRequestAction(id: string): Promise<ActionResult> {
+  if (!(await getAdminUser())) return NOT_ADMIN;
   if (!isValidQuoteId(id)) return INVALID;
   try {
     const customer = await approveQuoteRequest(id);
@@ -44,6 +50,7 @@ export async function approveRequestAction(id: string): Promise<ActionResult> {
 }
 
 export async function resendApprovalAction(id: string): Promise<ActionResult> {
+  if (!(await getAdminUser())) return NOT_ADMIN;
   if (!isValidQuoteId(id)) return INVALID;
   try {
     const customer = await getUnnotifiedApproved(id);
@@ -64,6 +71,7 @@ export async function resendApprovalAction(id: string): Promise<ActionResult> {
 }
 
 export async function rejectRequestAction(id: string): Promise<ActionResult> {
+  if (!(await getAdminUser())) return NOT_ADMIN;
   if (!isValidQuoteId(id)) return INVALID;
   try {
     const changed = await rejectQuoteRequest(id);

@@ -8,7 +8,7 @@ import {
   rejectRequestAction,
   resendApprovalAction,
   type ActionResult,
-} from "@/app/admin/requests/actions";
+} from "@/app/admin/(dashboard)/requests/actions";
 import type { QuoteStatus } from "@/lib/quote-store";
 
 // Approving emails the customer (through Make) and cannot be undone, so both decisions

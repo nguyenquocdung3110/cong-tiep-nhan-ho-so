@@ -19,10 +19,13 @@ export function LeadPanel({
   conversationId,
   lead,
   messageCount,
+  canEdit,
 }: {
   conversationId: string;
   lead: StoredLead | null;
   messageCount: number;
+  /** Only admins may (re)run the extraction, which writes the lead. */
+  canEdit: boolean;
 }) {
   return (
     <Card className="space-y-4 p-5">
@@ -71,7 +74,7 @@ export function LeadPanel({
         </p>
       )}
 
-      <ExtractLeadButton conversationId={conversationId} hasLead={!!lead} />
+      {canEdit && <ExtractLeadButton conversationId={conversationId} hasLead={!!lead} />}
     </Card>
   );
 }

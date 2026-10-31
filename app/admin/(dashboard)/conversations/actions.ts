@@ -2,25 +2,34 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import {
-  deleteConversation,
-  getAllMessages,
-  isValidConversationId,
-  saveLead,
-} from "@/lib/chat-store";
+import { canEdit, getAdminUser } from "@/lib/admin-auth";
+import { deleteConversation, getAllMessages, saveLead } from "@/lib/admin-data";
+import { isValidConversationId } from "@/lib/chat-store";
 import { extractLead } from "@/lib/lead-extractor";
 
 export type DeleteResult = { ok: false; error: string };
+
+const AUTH_ERROR = "Phiên đăng nhập quản trị đã hết hạn. Vui lòng đăng nhập lại.";
+const NO_PERMISSION = "Bạn không có quyền thực hiện thao tác này. Chỉ admin được sửa hoặc xóa.";
+
+// Changing or deleting conversation data is for admins only. The role is checked here, and the
+// database enforces the same rule again (RLS): these calls run with the user's own session.
 
 export async function deleteConversationAction(
   id: string,
   redirectToList = false,
 ): Promise<DeleteResult> {
+  const user = await getAdminUser();
+  if (!user) return { ok: false, error: AUTH_ERROR };
+  if (!canEdit(user)) return { ok: false, error: NO_PERMISSION };
   if (!isValidConversationId(id)) {
     return { ok: false, error: "Mã hội thoại không hợp lệ." };
   }
   try {
-    await deleteConversation(id);
+    const deleted = await deleteConversation(id);
+    if (!deleted) {
+      return { ok: false, error: "Không xóa được: hội thoại không tồn tại hoặc bạn không có quyền xóa." };
+    }
   } catch (err) {
     console.error("Delete conversation failed", err);
     return { ok: false, error: "Không xóa được hội thoại. Thử lại sau." };
@@ -30,9 +39,10 @@ export async function deleteConversationAction(
   return { ok: false, error: "" }; // list page: revalidation removes the row
 }
 
-export async function extractLeadAction(
-  id: string,
-): Promise<{ error: string }> {
+export async function extractLeadAction(id: string): Promise<{ error: string }> {
+  const user = await getAdminUser();
+  if (!user) return { error: AUTH_ERROR };
+  if (!canEdit(user)) return { error: NO_PERMISSION };
   if (!isValidConversationId(id)) return { error: "Mã hội thoại không hợp lệ." };
   try {
     const messages = await getAllMessages(id);
